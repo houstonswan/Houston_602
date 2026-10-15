@@ -1,0 +1,270 @@
+---
+title: "Homework 1"
+author: "Houston Swan"
+date: "2026-10-01"
+output: pdf_document
+---
+
+```{r, message = FALSE}
+library(tidyverse)
+```
+
+# Problem 1
+
+## A
+
+```{r}
+set.seed(23242123)
+
+estimates <- function(x){
+  samplevariance <- var(x)
+  sd <- sd(x)
+  estpopvariance <- samplevariance * ((length(x)-1)/length(x))
+  return(c(s_squared = samplevariance,
+           sd = sd,
+           sigma_squared = estpopvariance))
+}
+
+sample <- rnorm(10,0,2)
+```
+
+
+```{r}
+estimates(sample)
+```
+
+## B
+
+```{r}
+results <- replicate(1000, estimates(rnorm(5,0,2)))
+
+class(results) #not a data frame yet
+
+dataframe <- as.data.frame(t(results))
+
+class(dataframe)
+
+hist(dataframe$s_squared)
+hist(dataframe$sigma_squared)
+
+ggplot(data = dataframe) +
+  geom_density(aes(x = s_squared), fill = "blue", alpha = 0.4) +
+  geom_density(aes(x = sigma_squared), fill = "red", alpha = 0.4) +
+  geom_vline(xintercept = 4, linetype = "dashed") +
+  geom_vline(xintercept = mean(dataframe$s_squared), color = "blue") +
+  geom_vline(xintercept = mean(dataframe$sigma_squared), color = "red") +
+  labs(title = "Estimators Distribution",
+       x = "Estimated Variance",
+       y = "Density",
+       subtitle = "sample variance shown in blue and population variance shown in red",
+       caption = "True variance indicated by dashed line, each estimator's mean is shown by the corresponding color lines")
+```
+
+from this plot it seems that the sample variance estimator is less biased since its mean is closer to the populations true variance value
+
+## C
+
+repeating but changing nobs
+
+```{r}
+results_n3 <- replicate(1000, estimates(rnorm(3,0,2)))
+results_n5 <- replicate(1000, estimates(rnorm(5,0,2)))
+results_n10 <- replicate(1000, estimates(rnorm(10,0,2)))
+results_n30 <- replicate(1000, estimates(rnorm(30,0,2)))
+results_n100 <- replicate(1000, estimates(rnorm(100,0,2)))
+
+# transposing matrices and saving as dataframes
+
+dataframe3 <- as.data.frame(t(results_n3))
+dataframe5 <- as.data.frame(t(results_n5))
+dataframe10 <- as.data.frame(t(results_n10))
+dataframe30 <- as.data.frame(t(results_n30))
+dataframe100 <- as.data.frame(t(results_n100))
+
+# recording bias for each estimator across observations
+
+bias_s2_n3 <- mean(dataframe3$s_squared) - 4
+bias_s2_n5 <- mean(dataframe5$s_squared) - 4
+bias_s2_n10 <- mean(dataframe10$s_squared) - 4
+bias_s2_n30 <- mean(dataframe30$s_squared) - 4
+bias_s2_n100 <- mean(dataframe100$s_squared) - 4
+bias_sigma_n3 <- mean(dataframe3$sigma_squared) - 4
+bias_sigma_n5 <- mean(dataframe5$sigma_squared) - 4
+bias_sigma_n10 <- mean(dataframe10$sigma_squared) - 4
+bias_sigma_n30 <- mean(dataframe30$sigma_squared) - 4
+bias_sigma_n100 <- mean(dataframe100$sigma_squared) - 4
+
+# creating new dataframe to store the values
+
+bias <- data.frame(
+  s2_bias = c(bias_s2_n3, bias_s2_n5, bias_s2_n10, bias_s2_n30, bias_s2_n100),
+  sigma_bias = c(bias_sigma_n3, bias_sigma_n5, bias_sigma_n10,
+                 bias_sigma_n30, bias_sigma_n100),
+  sample_size = c(3,5,10,30,100)
+)
+```
+
+```{r}
+# creating a plot to show results
+
+ggplot(data = bias, aes(x = sample_size)) +
+  geom_line(aes(y = s2_bias), color = "blue") +
+  geom_point(aes(y = s2_bias), color = "blue") +
+  geom_line(aes(y = sigma_bias), color = "red") +
+  geom_point(aes(y = sigma_bias), color = "red") +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  labs(title = "Bias of the estimators across sample size",
+       x = "Sample Size",
+       y = "Bias",
+       subtitle = "sample variance shown in blue and population variance shown in red")
+```
+
+## D
+
+```{r}
+# calculating bias of sd across sample size
+bias_sd_n3 <- mean(dataframe3$sd) - 2
+bias_sd_n5 <- mean(dataframe5$sd) - 2
+bias_sd_n10 <- mean(dataframe10$sd) - 2
+bias_sd_n30 <- mean(dataframe30$sd) - 2
+bias_sd_n100 <- mean(dataframe100$sd) - 2
+
+# adding it to the bias dataframe
+bias$bias_sd <- c(bias_sd_n3, bias_sd_n5, bias_sd_n10, bias_sd_n30, bias_sd_n100)
+bias
+```
+
+It seems that the sample standard deviation estimator is biased compared to the population standard deviation, although it is small it does underestimate the true value slightly
+
+## E
+
+```{r}
+# Calculating SD at n = 5 of the variance estimators
+
+sd(dataframe5$s_squared)
+sd(dataframe5$sigma_squared)
+```
+
+The sigma squared estimator has less variance, but the previous results show that it is also more biased. So even though the results are more precise and less varied, they are not as good because of the bias
+
+# Problem 2
+## A
+```{r}
+set.seed(120938123)
+# creating variables
+
+p <- 0.5
+z <- rnorm(100,0,1)
+u <- rnorm(100,0,1)
+x <- p * z + sqrt(1 - p^2) * u
+e <- rnorm(100,0,1)
+y <- 1 + 2 * x + 3 * z + e
+```
+
+## B, fit both models
+
+```{r}
+data100 <- data.frame(x, y, z)
+
+theorymodel <- lm(y ~ x, data = data100)
+truemodel <- lm(y ~ x + z, data = data100)
+
+summary(theorymodel)
+summary(truemodel)
+```
+
+```{r}
+# plotting to describe the findings
+
+theory_intercept <- coef(theorymodel)[["(Intercept)"]]
+theory_slope <- coef(theorymodel)[["x"]]
+true_intercept <- coef(truemodel)[["(Intercept)"]]
+true_slope <- coef(truemodel)[["x"]]
+
+ggplot(data = data100, aes(x = x, y = y)) +
+  geom_point(aes(color = z)) +
+  geom_abline(intercept = theory_intercept, slope = theory_slope,
+              color = "red") +
+  geom_abline(intercept = true_intercept, slope = true_slope,
+              color = "black") +
+  labs(title = "Red Line shows theoretical model, black line shows true model")
+```
+
+The theoretical model overstates the effect of news due to the omitted confounding variable of political interest
+
+## C, repeating with 1000 observations
+
+```{r}
+n <- 1000
+p <- 0.5
+z <- rnorm(n, 0, 1)
+u <- rnorm(n, 0, 1)
+x <- p * z + sqrt(1 - p^2) * u
+e <- rnorm(n, 0, 1)
+y <- 1 + 2 * x + 3 * z + e
+
+data1000 <- data.frame(x, y, z)
+
+theorymodel1000 <- lm(y ~ x, data = data1000)
+truemodel1000 <- lm(y ~ x + z, data = data1000)
+
+theory_intercept1000 <- coef(theorymodel1000)[["(Intercept)"]]
+theory_slope1000 <- coef(theorymodel1000)[["x"]]
+true_intercept1000 <- coef(truemodel1000)[["(Intercept)"]]
+true_slope1000 <- coef(truemodel1000)[["x"]]
+
+ggplot(data = data1000, aes(x = x, y = y)) +
+  geom_point(aes(color = z), alpha = 0.4) +
+  geom_abline(intercept = theory_intercept1000, slope = theory_slope1000,
+              color = "red") +
+  geom_abline(intercept = true_intercept1000, slope = true_slope1000,
+              color = "black") +
+  labs(title = "Red line shows theoretical model, black line shows true model")
+```
+
+```{r}
+# checking differences
+
+theory_slope
+theory_slope1000
+
+true_slope
+true_slope1000
+```
+
+it seems that adding more observations did not alleviate the omitted variable bias induced by not including the confounding Z of political interest
+
+## D, repeating with 1000 observations and p = 0
+
+```{r}
+n <- 1000
+p <- 0
+z <- rnorm(n, 0, 1)
+u <- rnorm(n, 0, 1)
+x <- p * z + sqrt(1 - p^2) * u
+e <- rnorm(n, 0, 1)
+y <- 1 + 2 * x + 3 * z + e
+
+data1000_p0 <- data.frame(x, y, z)
+
+theorymodel1000_p0 <- lm(y ~ x, data = data1000_p0)
+truemodel1000_p0 <- lm(y ~ x + z, data = data1000_p0)
+
+theory_intercept1000_p0 <- coef(theorymodel1000_p0)[["(Intercept)"]]
+theory_slope1000_p0 <- coef(theorymodel1000_p0)[["x"]]
+true_intercept1000_p0 <- coef(truemodel1000_p0)[["(Intercept)"]]
+true_slope1000_p0 <- coef(truemodel1000_p0)[["x"]]
+
+theory_slope1000_p0
+true_slope1000_p0
+
+ggplot(data = data1000_p0, aes(x = x, y = y)) +
+  geom_point(aes(color = z), alpha = 0.4) +
+  geom_abline(intercept = theory_intercept1000_p0, slope = theory_slope1000_p0,
+              color = "red") +
+  geom_abline(intercept = true_intercept1000_p0, slope = true_slope1000_p0,
+              color = "black") +
+  labs(title = "Red line shows theoretical model, black line shows true model (p = 0)")
+```
+
+The findings here imply that if there is a variable that could be a confounder, or have an effect on both our X and our Y then we must include it in the model, otherwise our estimates will be biased. This holds no matter how much more data we add to the sample. Additionally, if a variable affects Y but has no relationship with X it will not induce bias when omitted. Evidence is found in the results of this test, as both the theory and true slopes are near the value of 2 when p = 0.
